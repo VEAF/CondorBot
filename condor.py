@@ -7,8 +7,14 @@ from rich import print
 from config import Config, get_config
 import os
 from pywinauto import Application
+from pywinauto.application import WindowSpecification
 
 BOT_FLIGHT_PLAN_LIST = "condor_bot.sfl"
+CONDOR_DEDICATED_EXE = "CondorDedicated.exe"
+
+condor_app: Application | None = None
+condor_window: WindowSpecification | None = None
+condor_test = None
 
 
 class TurnPoint(BaseModel):
@@ -83,25 +89,26 @@ def load_flight_plan(filename: str) -> FlightPlan:
     return FlightPlan.model_validate(flightplan)
 
 
-def check_server_is_running() -> CondorProcess | None:
+def is_server_running() -> CondorProcess | None:
     for process in psutil.process_iter(attrs=["pid", "name", "cmdline"]):
-        if process.info["name"] == "CondorDedicated.exe":
+        if process.info["name"] == CONDOR_DEDICATED_EXE:
             return CondorProcess.model_validate(process.info)
     return None
 
 
-def get_default_flight_plans_list_path(config: Config) -> str:
-    return f"{config.condor_path}\\{BOT_FLIGHT_PLAN_LIST}"
+def get_default_flight_plans_list_path() -> str:
+    return f"{get_config().condor_path}\\{BOT_FLIGHT_PLAN_LIST}"
 
 
-def save_flight_plans_list(flight_plans: list[str], config: Config) -> None:
-    with open(get_default_flight_plans_list_path(config=config), "wt") as file:
+def save_flight_plans_list(flight_plans: list[str]) -> None:
+    with open(get_default_flight_plans_list_path(), "wt") as file:
         for flight_plan in flight_plans:
             print(f"writing {flight_plan} to list")
-            file.write(f"{config.flight_plans_path}\\{flight_plan}\n")
+            file.write(f"{get_config().flight_plans_path}\\{flight_plan}\n")
 
 
-def save_host_ini(config: Config) -> None:
+def save_host_ini() -> None:
+    config = get_config()
     host_ini: dict[str, str] = {}
 
     host_ini["ServerName"] = config.condor_server.server_name
@@ -125,86 +132,93 @@ def save_host_ini(config: Config) -> None:
         for key, value in host_ini.items():
             lines.append(f"{key}={value if value else ''}")
         lines.append("[DedicatedServer]")
-        lines.append(f"LastSFL={get_default_flight_plans_list_path(config=config)}")
+        lines.append(f"LastSFL={get_default_flight_plans_list_path()}")
 
         file.writelines([line + "\n" for line in lines])
 
 
-def start_server(config: Config, flight_plan_filename: str, client: Client | None = None) -> bool:
-    if process := check_server_is_running():
-        print(f"[red]condor server is already running[/red], pid={process.pid}")
-        return False
+def get_flight_plan_path(flight_plan_filename: str) -> str:
+    return f"{get_config().flight_plans_path}/{flight_plan_filename}"
 
-    flight_plan_filepath = f"{config.flight_plans_path}/{flight_plan_filename}"
+
+def start_server(flight_plan_filename: str) -> bool:
+    config = get_config()
+
+    if process := is_server_running():
+        raise Exception(f"condor server is already running, pid={process.pid}")
+
+    flight_plan_filepath = get_flight_plan_path(flight_plan_filename)
 
     if not os.path.isfile(flight_plan_filepath):
-        print(
-            f"[red]flight plan [blue]{flight_plan_filename}[/red] not found in [yellow]{config.flight_plans_path}[/yellow]"
-        )
-        return False
+        raise Exception(f"flight plan {flight_plan_filename} not found")
 
-    save_host_ini(config=config)
+    save_host_ini()
     print("[blue]Host.ini[/blue] [yellow]saved[/yellow]")
-    save_flight_plans_list(flight_plans=[flight_plan_filename], config=config)
+    save_flight_plans_list(flight_plans=[flight_plan_filename])
     print(f"flight plans list [blue]{BOT_FLIGHT_PLAN_LIST}[/blue] [yellow]saved[/yellow]")
-
-    # shutil.copy(flight_plan_filepath, f"{config.user_documents_path}/Flightplan.fpl")
-    # print("[blue]Flightplan.fpl[/blue] [yellow]saved[/yellow]")
-
-    # subprocess.Popen([config.condor_server_exe])
 
     try:
         old_path = os.getcwd()
         os.chdir(config.condor_path)
-        condor_app = Application().start(cmd_line=f"{config.condor_path}\\CondorDedicated.exe")
+        condor_app = Application().start(cmd_line=f"{config.condor_path}\\{CONDOR_DEDICATED_EXE}")
         os.chdir(old_path)
     except Exception:
         os.chdir(old_path)
+        return False
 
-    # for window in app.windows():
-    #     print(f"Titre: {window.window_text()}, Classe: {window.class_name()}")
+    condor_window = condor_app.window(title_re="Condor dedicated server.*", class_name="TDedicatedForm")
+    condor_window.child_window(title="START", class_name="TspSkinButton").click()
 
-    window = condor_app.window(title_re="Condor dedicated server.*", class_name="TDedicatedForm")
-
-    # window.dump_tree()
-    # for item in window.():
-    #     print(f"Titre: {window.window_text()}, Classe: {window.class_name()}")
-
-    window.child_window(title="START", class_name="TspSkinButton").click()
-    # sleep(5)
-
-    # print("[blue]CondorServer[/blue] [yellow]started[/yellow]")
+    return True
 
 
-def stop_server() -> None:
-    # @todo
+def refresh_server_status() -> None:
+    # @todo refresh server status, check labels, check buttons, etc...
     pass
 
 
-# au démarrage du serveur:
+def attach_server() -> bool:
+    if not is_server_running():
+        print("[red]condor server is not running[/red] couldn't attach")
+        return False
 
-# fichiers modifiés dans C:\Users\mitch\OneDrive\Documents\Condor3\Pilots\NAME_Firstname
-# C:\Users\veaf\Documents\Condor3\Pilots\NAME_Firstname
+    global condor_app, condor_window
 
-# Host.ini
-# [General]
-# ServerName=Default Server Name
-# Port=56278
-# Password=
-# MaxPlayers=32
-# MaxSpectators=32
-# MaxPing=60
-# JoinTimeLimit=10
-# MaxTowplanes=8
-# AdvertiseOnWeb=0
-# AutomaticPortForwarding=1
-# AdvertiseManualIP=
-# AllowClientsToSaveFlightPlan=1
+    condor_app = Application().connect(path=CONDOR_DEDICATED_EXE)
+    condor_window = condor_app.window(title_re="Condor dedicated server.*", class_name="TDedicatedForm")
 
-# Flightplan.fpl mis à jour
+    if not condor_window:
+        print("[red]condor server main window not found[/red]")
+        return False
+    print("[yellow]condor server main window attached[/yellow]")
+
+    return True
+
+
+def stop_server() -> None:
+    global condor_app, condor_window
+
+    if not condor_app or not condor_window:
+        raise Exception("condor app or window are not attached")
+    
+    if condor_window.child_window(title="STOP", class_name="TspSkinButton").exists():
+        condor_window.child_window(title="STOP", class_name="TspSkinButton").click()
+
+        confirm_window = condor_app.window(title="Confirm")
+        confirm_window.child_window(title="OK", class_name="TspSkinButton").click()
+
+        condor_window.child_window(title="START", class_name="TspSkinButton").wait(wait_for="visible")
+
+    condor_app.kill()
+
+    condor_app = None
+    condor_window = None
+
+    return True
 
 
 if __name__ == "__main__":
+    # just for basic tests...
     fp = load_flight_plan("tests/test.fpl")
     print(fp.landscape)
     print(f"distance: {fp.distance}")
@@ -212,10 +226,10 @@ if __name__ == "__main__":
     for tp in fp.turnpoints:
         print(tp)
 
-    process = check_server_is_running()
+    process = is_server_running()
     print("Condor Server:", end=" ")
     if isinstance(process, CondorProcess):
         print(f"[green]running[/green] (pid {process.pid} - {process.cmdline})")
     else:
         print("[red]not running[/red]")
-        start_server(config=get_config(), flight_plan_filename="Ajdovscina_100_km_ridge.fpl")
+        start_server(flight_plan_filename="Ajdovscina_100_km_ridge.fpl")

@@ -3,8 +3,9 @@ import os
 from rich import print
 from discord import Attachment, Message, Intents
 from discord.ext import commands
-from condor import load_flight_plan
+from condor import attach_server, is_server_running, load_flight_plan, start_server, stop_server
 from config import check_config, get_config
+import condor as Condor
 
 intents = Intents.default()
 intents.messages = True
@@ -26,6 +27,8 @@ Commands: /condor <command>
         
     start   start Condor 3 server
     stop    stop Condor 3 server
+    list    list flight plans
+    show    show informations about a flightplan
     ping    test if the discord bot is alive
 
 Upload: just send a new Flight Plan (ex: MyFlightPlan.fpl) to this channel.
@@ -46,12 +49,43 @@ async def ping(ctx):
 
 
 @condor.command(description="Start condor 3 server")
-async def start(ctx):
+async def start(ctx, flight_plan: str):
+    if process := is_server_running():
+        await ctx.send(f"❌ server is already running (pid: {process}), could not use start procedure")
+        return
+    try:
+        start_server(flight_plan)
+        await ctx.send(f"✅ server started with flight plan {flight_plan}")
+    except Exception as exc:
+        await ctx.send(f"❌ an error occured, server not started: {exc}")
+        return
+
+
+@condor.command(description="Refresh condor 3 server status")
+async def status(ctx):
     await ctx.send("👨‍💻 developpment in progress")
 
 
 @condor.command(description="Stop condor 3 server")
 async def stop(ctx):
+    if not is_server_running():
+        await ctx.send("❌ server is not running, could not stop the server")
+        return
+    try:
+        stop_server()
+        await ctx.send("✅ server stopped")
+    except Exception as exc:
+        await ctx.send(f"❌ an error occured, server not stopped: {exc}")
+        return
+
+
+@condor.command(name="list", description="List available flight plans")
+async def _list(ctx):
+    await ctx.send("👨‍💻 developpment in progress")
+
+
+@condor.command(description="Show informations about a flightplan")
+async def show(ctx):
     await ctx.send("👨‍💻 developpment in progress")
 
 
@@ -110,6 +144,13 @@ def main():
     try:
         config = get_config()
         check_config(config)
+
+        if not (process := is_server_running()):
+            print("server is not already running")
+        else:
+            print(f"server is already [yellow]running[/yellow] pid={process}, connecting to the app")
+            attach_server()
+
     except Exception as e:
         print(f"[red]error loading configuration[/red]: {e}")
         return
