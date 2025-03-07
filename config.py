@@ -33,8 +33,7 @@ class Config(BaseModel):
 
     condor_server: CondorServerConfig
     flight_plans_path: str
-    # user_documents_path: str
-    condor_server_exe: str
+    condor_path: str
 
 
 def load_config(filename: str) -> Config:

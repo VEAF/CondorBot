@@ -5,9 +5,10 @@ import configparser
 import psutil
 from rich import print
 from config import Config, get_config
-import shutil
 import os
-import subprocess
+from pywinauto import Application
+
+BOT_FLIGHT_PLAN_LIST = "condor_bot.sfl"
 
 
 class TurnPoint(BaseModel):
@@ -84,9 +85,20 @@ def load_flight_plan(filename: str) -> FlightPlan:
 
 def check_server_is_running() -> CondorProcess | None:
     for process in psutil.process_iter(attrs=["pid", "name", "cmdline"]):
-        if process.info["name"] == "CondorServer.exe":
+        if process.info["name"] == "CondorDedicated.exe":
             return CondorProcess.model_validate(process.info)
     return None
+
+
+def get_default_flight_plans_list_path(config: Config) -> str:
+    return f"{config.condor_path}\\{BOT_FLIGHT_PLAN_LIST}"
+
+
+def save_flight_plans_list(flight_plans: list[str], config: Config) -> None:
+    with open(get_default_flight_plans_list_path(config=config), "wt") as file:
+        for flight_plan in flight_plans:
+            print(f"writing {flight_plan} to list")
+            file.write(f"{config.flight_plans_path}\\{flight_plan}\n")
 
 
 def save_host_ini(config: Config) -> None:
@@ -105,12 +117,17 @@ def save_host_ini(config: Config) -> None:
     host_ini["AdvertiseManualIP"] = config.condor_server.advertise_manual_ip
     host_ini["AllowClientsToSaveFlightPlan"] = int(config.condor_server.allow_clients_to_save_flight_plan)
 
-    # if os.path.isfile()
-    host_ini_path = f"{config.user_documents_path}/Host.ini"
-    with open(host_ini_path, "w") as file:
-        file.write("[General]\r\n")
+    host_ini_path = f"{config.condor_path}/Settings/Host.ini"
+    with open(host_ini_path, "wt") as file:
+        lines: list[str] = []
+        lines.append("[General]")
+
         for key, value in host_ini.items():
-            file.write(f"{key}={value if value else ''}\r\n")
+            lines.append(f"{key}={value if value else ''}")
+        lines.append("[DedicatedServer]")
+        lines.append(f"LastSFL={get_default_flight_plans_list_path(config=config)}")
+
+        file.writelines([line + "\n" for line in lines])
 
 
 def start_server(config: Config, flight_plan_filename: str, client: Client | None = None) -> bool:
@@ -128,12 +145,35 @@ def start_server(config: Config, flight_plan_filename: str, client: Client | Non
 
     save_host_ini(config=config)
     print("[blue]Host.ini[/blue] [yellow]saved[/yellow]")
+    save_flight_plans_list(flight_plans=[flight_plan_filename], config=config)
+    print(f"flight plans list [blue]{BOT_FLIGHT_PLAN_LIST}[/blue] [yellow]saved[/yellow]")
 
-    shutil.copy(flight_plan_filepath, f"{config.user_documents_path}/Flightplan.fpl")
-    print("[blue]Flightplan.fpl[/blue] [yellow]saved[/yellow]")
+    # shutil.copy(flight_plan_filepath, f"{config.user_documents_path}/Flightplan.fpl")
+    # print("[blue]Flightplan.fpl[/blue] [yellow]saved[/yellow]")
 
-    subprocess.Popen([config.condor_server_exe, "CSS_PAR"])
-    print("[blue]CondorServer[/blue] [yellow]started[/yellow]")
+    # subprocess.Popen([config.condor_server_exe])
+
+    try:
+        old_path = os.getcwd()
+        os.chdir(config.condor_path)
+        condor_app = Application().start(cmd_line=f"{config.condor_path}\\CondorDedicated.exe")
+        os.chdir(old_path)
+    except Exception:
+        os.chdir(old_path)
+
+    # for window in app.windows():
+    #     print(f"Titre: {window.window_text()}, Classe: {window.class_name()}")
+
+    window = condor_app.window(title_re="Condor dedicated server.*", class_name="TDedicatedForm")
+
+    # window.dump_tree()
+    # for item in window.():
+    #     print(f"Titre: {window.window_text()}, Classe: {window.class_name()}")
+
+    window.child_window(title="START", class_name="TspSkinButton").click()
+    # sleep(5)
+
+    # print("[blue]CondorServer[/blue] [yellow]started[/yellow]")
 
 
 def stop_server() -> None:
@@ -178,4 +218,4 @@ if __name__ == "__main__":
         print(f"[green]running[/green] (pid {process.pid} - {process.cmdline})")
     else:
         print("[red]not running[/red]")
-        start_server(config=get_config(), flight_plan_filename="Valence_Gap.fpl")
+        start_server(config=get_config(), flight_plan_filename="Ajdovscina_100_km_ridge.fpl")
