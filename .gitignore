@@ -1,0 +1,7 @@
+/downloads
+.venv
+/config.yaml
+.env
+/var
+__pycache__
+/Logs
