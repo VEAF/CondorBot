@@ -2,8 +2,8 @@ discord:
   api_token: abcdefghijklmnopqrstuvwxz
   channel_id: 123456789
 
-flight_plans_path: var/flightplans
-condor_server_exe: E:\Condor3\CondorDedicated.exe
+flight_plans_path: var\flightplans
+condor_path: E:\Condor3
 
 condor_server:
   server_name: "VEAF TEST"
