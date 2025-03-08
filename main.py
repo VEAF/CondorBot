@@ -1,10 +1,20 @@
 import logging
 from rich import print
-from discord import Message, Intents
+from discord import Message, Intents, Member, Interaction, SelectOption
 from discord.ext import commands
-from condor.server_manager import attach_server, is_server_running, start_server, stop_server
+from discord import ui
+from condor.flight_plan import list_flight_plans
+from condor.server_manager import (
+    OnlineStatus,
+    attach_server,
+    is_server_running,
+    refresh_server_status,
+    start_server,
+    stop_server,
+)
 from condor.config import check_config, get_config
 from services.agent import on_files_upload, on_list_flight_plans, on_status
+from services.dialogs import SelectFlightPlanView
 
 intents = Intents.default()
 intents.messages = True
@@ -48,13 +58,24 @@ async def ping(ctx):
 
 
 @condor.command(description="Start condor 3 server")
-async def start(ctx, flight_plan: str):
-    if process := is_server_running():
-        await ctx.send(f"❌ server is already running (pid: {process}), could not use start procedure")
+async def start(ctx):
+    status = refresh_server_status()
+    if status.online_status != OnlineStatus.OFFLINE.value:
+        await ctx.send("❌ server is already running, server should be stopped first")
         return
     try:
-        start_server(flight_plan)
-        await ctx.send(f"✅ server started with flight plan {flight_plan}")
+        view = SelectFlightPlanView(ctx.author)
+        await ctx.send("📋 Select a flight plan:", view=view)
+
+        await view.wait()  # wait for user answer
+        if view.response:
+            flight_plan = view.response
+            await ctx.send(f"📋 Selected flight plan: **{flight_plan}**\n*starting server*")
+            start_server(flight_plan)
+            await ctx.send(f"✅ server started with flight plan {flight_plan}")
+        else:
+            await ctx.send("⏳ elapsed time, operation cancelled.")
+
     except Exception as exc:
         await ctx.send(f"❌ an error occured, server not started: {exc}")
         return

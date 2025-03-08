@@ -28,7 +28,7 @@ def test_flightplan_distance():
         TurnPoint(name="End", pos_x=6.0, pos_y=8.0, pos_z=1000.0, airport_id=3, radius=500, altitude=1400),
     ]
     fp = FlightPlan(
-        filename="test.sfl",
+        filepath="test.sfl",
         version="1.0",
         landscape="TestLand",
         description="A test flight plan",
@@ -64,5 +64,7 @@ def test_list_flight_plans(mock_config):
 
     fp = fpl[0]
     assert isinstance(fp, FlightPlan)
-    assert fp.filename == "tests\\files\\test.fpl"
+    assert fp.filepath == "tests\\files\\test.fpl"
+    assert fp.filename == "test.fpl"
+    assert fp.human_filename == "test"
     assert fp.landscape == "Slovenia3"
