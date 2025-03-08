@@ -1,0 +1,9 @@
+discord:
+  api_token: DISCORD_API_TOKEN
+  channel_id: 1234567890
+
+flight_plans_path: test\files
+condor_path: C:\Condor3
+
+condor_server:
+  server_name: "VEAF TEST"

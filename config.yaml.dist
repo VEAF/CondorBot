@@ -2,8 +2,19 @@ discord:
   api_token: abcdefghijklmnopqrstuvwxz
   channel_id: 123456789
 
-flight_plans_path: var\flightplans
-condor_path: E:\Condor3
+flight_plans_path: C:\Condor3\BotFlightPlans
+condor_path: C:\Condor3
 
 condor_server:
   server_name: "VEAF TEST"
+  # port: 56278
+  # password: MyPassword
+  # max_players: 32
+  # max_spectators: 32
+  # max_ping: 500
+  # join_time_limit: 10
+  # max_two_planes: 8
+  # advertise_on_web: false
+  # automatic_port_forwarding: true
+  # advertise_manual_ip: 1.2.3.4
+  # allow_clients_to_save_flight_plan: true
