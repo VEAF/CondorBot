@@ -1,11 +1,10 @@
 import logging
-import os
 from rich import print
-from discord import Attachment, Message, Intents
+from discord import Message, Intents
 from discord.ext import commands
-from condor import attach_server, is_server_running, load_flight_plan, start_server, stop_server
-from config import check_config, get_config
-import condor as Condor
+from condor.server_manager import attach_server, is_server_running, start_server, stop_server
+from condor.config import check_config, get_config
+from services.agent import on_files_upload
 
 intents = Intents.default()
 intents.messages = True
@@ -89,41 +88,6 @@ async def show(ctx):
     await ctx.send("👨‍💻 developpment in progress")
 
 
-async def on_flight_plan_upload(message: Message, attachment: Attachment) -> None:
-    file_name = attachment.filename
-
-    print(f"a new flight plan was received: {file_name}")
-
-    local_filepath = f"{get_config().flight_plans_path}/{file_name}"
-    await attachment.save(local_filepath)
-
-    try:
-        flight_plan = load_flight_plan(local_filepath)
-
-        msg = f"✅ {message.author} has uploaded a new flight plan:\n"
-        msg += "\n"
-        msg += f"**Flight Plan**: {flight_plan.filename}\n"
-        msg += f"**Length**: {flight_plan.distance / 1000:.0f} km\n"
-        msg += f"**Turn points**: {len(flight_plan.turnpoints)}\n"
-        for tp in flight_plan.turnpoints:
-            msg += f"- {tp.name}\n"
-
-        print(f"✅ flight plan [blue]{file_name}[/blue] [green]saved[/green]")
-        await message.channel.send(msg)
-
-    except Exception as exc:
-        os.remove(local_filepath)
-        print(f"❌ flight plan [blue]{file_name}[/blue] [red]ignored[/red]")
-        await message.channel.send(f"your flight plan is refused: {exc}")
-
-
-async def on_files_upload(message: Message) -> None:
-    for attachment in message.attachments:
-        extension = ".fpl"
-        if attachment.filename.endswith(extension):
-            await on_flight_plan_upload(message, attachment)
-
-
 @bot.event
 async def on_message(message: Message):
     config = get_config()
@@ -136,7 +100,7 @@ async def on_message(message: Message):
     if message.attachments:
         await on_files_upload(message)
 
-    await bot.process_commands(message)
+    await bot.process_commands(message)  # hack to propagate message to commands
 
 
 def main():

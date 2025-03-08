@@ -1,53 +1,16 @@
-from math import sqrt
-from pydantic import BaseModel
-from discord import Client
-import configparser
 import psutil
+from pydantic import BaseModel
 from rich import print
-from config import Config, get_config
+from condor.flight_plan import BOT_FLIGHT_PLAN_LIST, get_default_flight_plans_list_path, save_flight_plans_list
+from condor.config import get_config
 import os
 from pywinauto import Application
 from pywinauto.application import WindowSpecification
 
-BOT_FLIGHT_PLAN_LIST = "condor_bot.sfl"
 CONDOR_DEDICATED_EXE = "CondorDedicated.exe"
 
 condor_app: Application | None = None
 condor_window: WindowSpecification | None = None
-condor_test = None
-
-
-class TurnPoint(BaseModel):
-    name: str
-    pos_x: float
-    pos_y: float
-    pos_z: float
-    airport_id: int
-    radius: int
-    altitude: int
-
-
-class PlaneClass(BaseModel):
-    name: str
-
-
-class FlightPlan(BaseModel):
-    filename: str
-    version: str
-    landscape: str
-    description: str
-    turnpoints: list[TurnPoint]
-
-    @property
-    def distance(self) -> float:
-        total_dist = 0
-
-        for i in range(1, len(self.turnpoints) - 1):
-            point_from = self.turnpoints[i - 1]
-            point_to = self.turnpoints[i]
-            total_dist += sqrt((point_to.pos_x - point_from.pos_x) ** 2 + (point_to.pos_y - point_from.pos_y) ** 2)
-
-        return total_dist
 
 
 class CondorProcess(BaseModel):
@@ -56,55 +19,11 @@ class CondorProcess(BaseModel):
     pid: int
 
 
-def load_flight_plan(filename: str) -> FlightPlan:
-    parser = configparser.ConfigParser()
-    parser.read(filename, encoding="utf-8")
-
-    flightplan = {}
-    flightplan["filename"] = filename.split("/")[-1]
-    flightplan["version"] = parser.get("Version", "Condor version", fallback=None)
-    flightplan["landscape"] = parser.get("Task", "Landscape", fallback=None)
-    flightplan["description"] = parser.get("Description", "Text", fallback=None)
-    flightplan["turnpoints"] = []
-
-    flightplan["plane_class"] = {
-        "class": parser.get("Plane", "Class", fallback=None),
-        "name": parser.get("Plane", "Name", fallback=None),
-        "water": int(parser.get("Plane", "Water", fallback=0)),
-    }
-
-    nb_turnpoints = parser.getint("Task", "Count", fallback=0)
-    for i in range(nb_turnpoints):
-        tp = {
-            "name": parser.get("Task", f"TPName{i}", fallback=None),
-            "pos_x": float(parser.get("Task", f"TPPosX{i}", fallback=0)),
-            "pos_y": float(parser.get("Task", f"TPPosY{i}", fallback=0)),
-            "pos_z": float(parser.get("Task", f"TPPosZ{i}", fallback=0)),
-            "airport_id": int(parser.get("Task", f"TPAirport{i}", fallback=0)),
-            "radius": int(parser.get("Task", f"TPRadius{i}", fallback=0)),
-            "altitude": int(parser.get("Task", f"TPAltitude{i}", fallback=0)),
-        }
-        flightplan["turnpoints"].append(tp)
-
-    return FlightPlan.model_validate(flightplan)
-
-
 def is_server_running() -> CondorProcess | None:
     for process in psutil.process_iter(attrs=["pid", "name", "cmdline"]):
         if process.info["name"] == CONDOR_DEDICATED_EXE:
             return CondorProcess.model_validate(process.info)
     return None
-
-
-def get_default_flight_plans_list_path() -> str:
-    return f"{get_config().condor_path}\\{BOT_FLIGHT_PLAN_LIST}"
-
-
-def save_flight_plans_list(flight_plans: list[str]) -> None:
-    with open(get_default_flight_plans_list_path(), "wt") as file:
-        for flight_plan in flight_plans:
-            print(f"writing {flight_plan} to list")
-            file.write(f"{get_config().flight_plans_path}\\{flight_plan}\n")
 
 
 def save_host_ini() -> None:
@@ -142,6 +61,8 @@ def get_flight_plan_path(flight_plan_filename: str) -> str:
 
 
 def start_server(flight_plan_filename: str) -> bool:
+    global condor_app, condor_window
+
     config = get_config()
 
     if process := is_server_running():
@@ -200,7 +121,7 @@ def stop_server() -> None:
 
     if not condor_app or not condor_window:
         raise Exception("condor app or window are not attached")
-    
+
     if condor_window.child_window(title="STOP", class_name="TspSkinButton").exists():
         condor_window.child_window(title="STOP", class_name="TspSkinButton").click()
 
@@ -215,21 +136,3 @@ def stop_server() -> None:
     condor_window = None
 
     return True
-
-
-if __name__ == "__main__":
-    # just for basic tests...
-    fp = load_flight_plan("tests/test.fpl")
-    print(fp.landscape)
-    print(f"distance: {fp.distance}")
-
-    for tp in fp.turnpoints:
-        print(tp)
-
-    process = is_server_running()
-    print("Condor Server:", end=" ")
-    if isinstance(process, CondorProcess):
-        print(f"[green]running[/green] (pid {process.pid} - {process.cmdline})")
-    else:
-        print("[red]not running[/red]")
-        start_server(flight_plan_filename="Ajdovscina_100_km_ridge.fpl")
