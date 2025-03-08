@@ -1,6 +1,13 @@
 import pytest
 from unittest.mock import patch
-from condor.flight_plan import TurnPoint, FlightPlan, load_flight_plan, get_flight_plan_path, save_flight_plans_list
+from condor.flight_plan import (
+    TurnPoint,
+    FlightPlan,
+    list_flight_plans,
+    load_flight_plan,
+    get_flight_plan_path,
+    save_flight_plans_list,
+)
 
 
 def test_turnpoint_creation():
@@ -48,3 +55,14 @@ def test_load_flight_plan():
     assert tp.airport_id == 1
     assert tp.radius == 3000
     assert tp.altitude == 1500
+
+
+def test_list_flight_plans(mock_config):
+    fpl = list_flight_plans()
+
+    assert len(fpl) == 2
+
+    fp = fpl[0]
+    assert isinstance(fp, FlightPlan)
+    assert fp.filename == "tests\\files\\test.fpl"
+    assert fp.landscape == "Slovenia3"

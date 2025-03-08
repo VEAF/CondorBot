@@ -1,6 +1,7 @@
+import os
+import configparser
 from math import sqrt
 from pydantic import BaseModel
-import configparser
 from rich import print
 from condor.config import get_config
 
@@ -43,8 +44,6 @@ class FlightPlan(BaseModel):
 def load_flight_plan(filepath: str) -> FlightPlan:
     parser = configparser.ConfigParser()
     parser.read(filepath, encoding="utf-8")
-
-    print(filepath)
 
     flightplan = {}
     flightplan["filename"] = filepath.split("/")[-1]
@@ -89,3 +88,17 @@ def save_flight_plans_list(flight_plans: list[str]) -> None:
 def get_flight_plan_path(flight_plan_filename: str) -> str:
     """Get the absolute flight plan path for specified flight plan filename"""
     return f"{get_config().flight_plans_path}/{flight_plan_filename}"
+
+
+def list_flight_plans() -> list[FlightPlan]:
+    fpl: list[FlightPlan] = []
+
+    for filename in os.listdir(get_config().flight_plans_path):
+        if filename.endswith(".fpl"):
+            try:
+                fpl.append(load_flight_plan(get_config().flight_plans_path + "\\" + filename))
+            except Exception:
+                pass  # just ignore bad flight plan loading
+
+    fpl.sort(key=lambda x: x.filename.lower())
+    return fpl

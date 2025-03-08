@@ -4,7 +4,7 @@ from discord import Message, Intents
 from discord.ext import commands
 from condor.server_manager import attach_server, is_server_running, start_server, stop_server
 from condor.config import check_config, get_config
-from services.agent import on_files_upload
+from services.agent import on_files_upload, on_list_flight_plans
 
 intents = Intents.default()
 intents.messages = True
@@ -78,9 +78,9 @@ async def stop(ctx):
         return
 
 
-@condor.command(name="list", description="List available flight plans")
+@condor.command(name="list", description="List flight plans available")
 async def _list(ctx):
-    await ctx.send("👨‍💻 developpment in progress")
+    await on_list_flight_plans(ctx)
 
 
 @condor.command(description="Show informations about a flightplan")
