@@ -1,3 +1,4 @@
+from enum import IntEnum
 import psutil
 from pydantic import BaseModel
 from rich import print
@@ -11,6 +12,19 @@ CONDOR_DEDICATED_EXE = "CondorDedicated.exe"
 
 condor_app: Application | None = None
 condor_window: WindowSpecification | None = None
+
+
+class OnlineStatus(IntEnum):
+    OFFLINE = 0  # CondorDediacted.exe is not launched
+    RUNNING = 1  # CondorDediacted.exe is running
+    JOINING_ENABLED = 2  # Game is launched, server is listening on TCP/UDP, players can join
+    JOINING_DISABLED = 3  # Game is launched, server is listening on TCP/UDP, only spectators can join
+
+
+class ServerStatus(BaseModel):
+    online_status: OnlineStatus = OnlineStatus.OFFLINE
+    time: str | None = None
+    stop_join_in: str | None = None
 
 
 class CondorProcess(BaseModel):
@@ -93,9 +107,45 @@ def start_server(flight_plan_filename: str) -> bool:
     return True
 
 
-def refresh_server_status() -> None:
+def parse_server_status_list_box_items(list_box_items) -> ServerStatus:
+    raw_status = {}
+    status = ServerStatus()
+    for item in list_box_items:
+        key, value = str(item).split(":", 1)
+        raw_status[key] = value.strip()
+
+    if "Status" not in raw_status:
+        status.online_status = OnlineStatus.RUNNING
+    elif raw_status["Status"] == "joining enabled":
+        status.online_status = OnlineStatus.JOINING_ENABLED
+    else:
+        status.online_status = OnlineStatus.JOINING_DISABLED
+
+    status.time = raw_status.get("Time", None)
+    status.stop_join_in = raw_status.get("Stop join in", None)
+
+    return status
+
+
+def refresh_server_status() -> ServerStatus:
     # @todo refresh server status, check labels, check buttons, etc...
-    pass
+
+    if not condor_app or not condor_window:
+        if not attach_server():
+            return ServerStatus(online_status=OnlineStatus.OFFLINE)
+
+    # a better way than searching all listbox, and matching the top position ?
+    list_boxes = condor_window.descendants(class_name="TspListBox")
+    target_list_box = None
+    for list_box in list_boxes:
+        if list_box.rectangle().top == 448:
+            target_list_box = list_box
+            break
+
+    if not target_list_box:
+        raise Exception("status list not found in condor server window")
+
+    return parse_server_status_list_box_items(target_list_box.item_texts())
 
 
 def attach_server() -> bool:
@@ -136,3 +186,7 @@ def stop_server() -> None:
     condor_window = None
 
     return True
+
+
+if __name__ == "__main__":
+    refresh_server_status()

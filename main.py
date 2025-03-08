@@ -4,7 +4,7 @@ from discord import Message, Intents
 from discord.ext import commands
 from condor.server_manager import attach_server, is_server_running, start_server, stop_server
 from condor.config import check_config, get_config
-from services.agent import on_files_upload, on_list_flight_plans
+from services.agent import on_files_upload, on_list_flight_plans, on_status
 
 intents = Intents.default()
 intents.messages = True
@@ -62,7 +62,7 @@ async def start(ctx, flight_plan: str):
 
 @condor.command(description="Refresh condor 3 server status")
 async def status(ctx):
-    await ctx.send("👨‍💻 developpment in progress")
+    await on_status(ctx)
 
 
 @condor.command(description="Stop condor 3 server")
