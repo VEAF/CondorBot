@@ -1,7 +1,7 @@
 import os
 from discord import Message, Attachment
 from condor.config import get_config
-from condor.flight_plan import load_flight_plan
+from condor.flight_plan import FlightPlan, list_flight_plans, load_flight_plan
 
 
 async def on_flight_plan_upload(message: Message, attachment: Attachment) -> None:
@@ -15,8 +15,7 @@ async def on_flight_plan_upload(message: Message, attachment: Attachment) -> Non
     try:
         flight_plan = load_flight_plan(local_filepath)
 
-        msg = f"✅ {message.author} has uploaded a new flight plan:\n"
-        msg += "\n"
+        msg = f"✅ {message.author} has uploaded a new flight plan:\n\n"
         msg += f"**Flight Plan**: {flight_plan.filename}\n"
         msg += f"**Length**: {flight_plan.distance / 1000:.0f} km\n"
         msg += f"**Turn points**: {len(flight_plan.turnpoints)}\n"
@@ -37,3 +36,12 @@ async def on_files_upload(message: Message) -> None:
         extension = ".fpl"
         if attachment.filename.endswith(extension):
             await on_flight_plan_upload(message, attachment)
+
+
+async def on_list_flight_plans(ctx) -> None:
+    fpl = list_flight_plans()
+    msg = f"{'✅' if len(fpl) > 0 else '❌'} {len(fpl)} flight plans available:\n\n"
+    for fp in fpl:
+        msg += f"- {fp.filename.split('\\')[-1]} *{fp.landscape} - {fp.distance / 1000:.0f} km*\n"
+
+    await ctx.channel.send(msg)
