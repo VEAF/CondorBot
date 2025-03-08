@@ -23,7 +23,7 @@ class PlaneClass(BaseModel):
 
 
 class FlightPlan(BaseModel):
-    filename: str
+    filepath: str
     version: str
     landscape: str
     description: str
@@ -40,13 +40,21 @@ class FlightPlan(BaseModel):
 
         return total_dist
 
+    @property
+    def filename(self) -> str:
+        return self.filepath.split("\\")[-1]
+
+    @property
+    def human_filename(self) -> str:
+        return self.filename[: -len(".fpl")]
+
 
 def load_flight_plan(filepath: str) -> FlightPlan:
     parser = configparser.ConfigParser()
     parser.read(filepath, encoding="utf-8")
 
     flightplan = {}
-    flightplan["filename"] = filepath.split("/")[-1]
+    flightplan["filepath"] = filepath.split("/")[-1]
     flightplan["version"] = parser.get("Version", "Condor version", fallback=None)
     flightplan["landscape"] = parser.get("Task", "Landscape", fallback=None)
     flightplan["description"] = parser.get("Description", "Text", fallback=None)
