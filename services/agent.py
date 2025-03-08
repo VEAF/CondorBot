@@ -2,6 +2,14 @@ import os
 from discord import Message, Attachment
 from condor.config import get_config
 from condor.flight_plan import FlightPlan, list_flight_plans, load_flight_plan
+from condor.server_manager import refresh_server_status, OnlineStatus
+
+SERVER_STATUS_ICONS = {
+    OnlineStatus.OFFLINE: "❌",
+    OnlineStatus.RUNNING: "💿",
+    OnlineStatus.JOINING_ENABLED: "🕑",
+    OnlineStatus.JOINING_DISABLED: "✈️",
+}
 
 
 async def on_flight_plan_upload(message: Message, attachment: Attachment) -> None:
@@ -45,3 +53,18 @@ async def on_list_flight_plans(ctx) -> None:
         msg += f"- {fp.filename.split('\\')[-1]} *{fp.landscape} - {fp.distance / 1000:.0f} km*\n"
 
     await ctx.channel.send(msg)
+
+
+async def on_status(ctx) -> None:
+    try:
+        status = refresh_server_status()
+
+        msg = SERVER_STATUS_ICONS.get(status.online_status, "⁉️") + " " + str(status.online_status.name) + "\n"
+        if status.time:
+            msg += f"**In game time**: {status.time}\n"
+        if status.stop_join_in:
+            msg += f"**Stop join in**: {status.stop_join_in}\n"
+        await ctx.channel.send(msg)
+
+    except Exception as exc:
+        await ctx.channel.send(f"❌ error: {exc}")
