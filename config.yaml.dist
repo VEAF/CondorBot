@@ -9,6 +9,7 @@ condor_server:
   server_name: "VEAF TEST"
   # port: 56278
   # password: MyPassword
+  # admin_password: MyAdminPassword
   # max_players: 32
   # max_spectators: 32
   # max_ping: 500
