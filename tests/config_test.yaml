@@ -7,3 +7,4 @@ condor_path: C:\Condor3
 
 condor_server:
   server_name: "VEAF TEST"
+  admin_password: MyAdminPassword

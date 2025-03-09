@@ -17,6 +17,7 @@ class CondorServerConfig(BaseModel):
     server_name: str = "Default Server Name"
     port: int = 56278
     password: str | None = None
+    admin_password: str | None = None
     max_players: int = 32
     max_spectators: int = 32
     max_ping: int = 500
