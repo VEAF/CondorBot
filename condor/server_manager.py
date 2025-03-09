@@ -1,6 +1,6 @@
 from enum import IntEnum
 import psutil
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rich import print
 from condor.flight_plan import BOT_FLIGHT_PLAN_LIST, get_default_flight_plans_list_path, save_flight_plans_list
 from condor.config import get_config
@@ -18,13 +18,15 @@ class OnlineStatus(IntEnum):
     OFFLINE = 0  # CondorDediacted.exe is not launched
     RUNNING = 1  # CondorDediacted.exe is running
     JOINING_ENABLED = 2  # Game is launched, server is listening on TCP/UDP, players can join
-    JOINING_DISABLED = 3  # Game is launched, server is listening on TCP/UDP, only spectators can join
+    RACE_IN_PROGRESS = 3  # Game is launched, server is listening on TCP/UDP, only spectators can join
+    JOINING_DISABLED = 4  # unknown state when race is finished @toco
 
 
 class ServerStatus(BaseModel):
     online_status: OnlineStatus = OnlineStatus.OFFLINE
     time: str | None = None
     stop_join_in: str | None = None
+    players: list[str] = Field(default_factory=list)
 
 
 class CondorProcess(BaseModel):
@@ -107,9 +109,8 @@ def start_server(flight_plan_filename: str) -> bool:
     return True
 
 
-def parse_server_status_list_box_items(list_box_items) -> ServerStatus:
+def parse_server_status_list_box_items(status: ServerStatus, list_box_items) -> None:
     raw_status = {}
-    status = ServerStatus()
     for item in list_box_items:
         key, value = str(item).split(":", 1)
         raw_status[key] = value.strip()
@@ -118,13 +119,21 @@ def parse_server_status_list_box_items(list_box_items) -> ServerStatus:
         status.online_status = OnlineStatus.RUNNING
     elif raw_status["Status"] == "joining enabled":
         status.online_status = OnlineStatus.JOINING_ENABLED
+    elif raw_status["Status"] == "race in progress":
+        status.online_status = OnlineStatus.RACE_IN_PROGRESS
     else:
         status.online_status = OnlineStatus.JOINING_DISABLED
 
     status.time = raw_status.get("Time", None)
     status.stop_join_in = raw_status.get("Stop join in", None)
 
-    return status
+
+def parse_players_list_box_items(status: ServerStatus, list_box_items) -> None:
+    players = []
+    for item in list_box_items:
+        players.append(item)
+
+    status.players = players
 
 
 def refresh_server_status() -> ServerStatus:
@@ -136,16 +145,27 @@ def refresh_server_status() -> ServerStatus:
 
     # a better way than searching all listbox, and matching the top position ?
     list_boxes = condor_window.descendants(class_name="TspListBox")
-    target_list_box = None
-    for list_box in list_boxes:
-        if list_box.rectangle().top == 448:
-            target_list_box = list_box
-            break
+    server_status_list_box = None
+    players_list_box = None
 
-    if not target_list_box:
-        raise Exception("status list not found in condor server window")
+    # SERVER_NAME_LIST_ID = 0
+    SERVER_STATUS_LIST_ID = 1
+    # SERVER_FPL_LIST_ID = 2
+    SERVER_PLAYERS_LIST_ID = 3
+    for list_box_id, list_box in enumerate(list_boxes):
+        if list_box_id == SERVER_STATUS_LIST_ID:
+            server_status_list_box = list_box
+        if list_box_id == SERVER_PLAYERS_LIST_ID:
+            players_list_box = list_box
 
-    return parse_server_status_list_box_items(target_list_box.item_texts())
+    if not server_status_list_box:
+        raise Exception("server status list not found in condor server window")
+
+    status = ServerStatus()
+    parse_server_status_list_box_items(status, server_status_list_box.item_texts())
+    parse_players_list_box_items(status, players_list_box.item_texts())
+
+    return status
 
 
 def attach_server() -> bool:

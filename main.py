@@ -88,12 +88,17 @@ async def status(ctx):
 
 @condor.command(description="Stop condor 3 server")
 async def stop(ctx):
-    if not is_server_running():
-        await ctx.send("❌ server is not running, could not stop the server")
-        return
     try:
-        stop_server()
-        await ctx.send("✅ server stopped")
+        status = refresh_server_status()
+        if status.online_status == OnlineStatus.OFFLINE.value:
+            await ctx.send("❌ server is not running, so it couln't be stopped")
+            return
+        if status.online_status == OnlineStatus.RUNNING.value or len(status.players) == 0:
+            stop_server()
+            await ctx.send("✅ server stopped")
+        else:
+            await ctx.send(f"❌ server couldn't be stopped, {len(status.players)} player(s) are connected")
+            return
     except Exception as exc:
         await ctx.send(f"❌ an error occured, server not stopped: {exc}")
         return
