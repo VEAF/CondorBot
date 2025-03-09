@@ -49,6 +49,7 @@ def save_host_ini() -> None:
     host_ini["ServerName"] = config.condor_server.server_name
     host_ini["Port"] = config.condor_server.port
     host_ini["Password"] = config.condor_server.password
+    host_ini["AdminPassword"] = config.condor_server.admin_password
     host_ini["MaxPlayers"] = config.condor_server.max_players
     host_ini["MaxSpectators"] = config.condor_server.max_spectators
     host_ini["MaxPing"] = config.condor_server.max_ping
