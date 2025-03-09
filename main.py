@@ -1,9 +1,8 @@
 import logging
 from rich import print
-from discord import Message, Intents, Member, Interaction, SelectOption
+from discord import Message, Intents
 from discord.ext import commands
-from discord import ui
-from condor.flight_plan import list_flight_plans
+from condor import release
 from condor.server_manager import (
     OnlineStatus,
     attach_server,
@@ -29,9 +28,10 @@ logger = logging.getLogger("main")
 @bot.group()
 async def condor(ctx):
     if ctx.invoked_subcommand is None:
-        msg = """
-**Condor 3 bot help**
-        
+        msg = f"""
+**Condor 3 bot help** - *v{release.version}*
+
+```        
 Commands: /condor <command>
         
     start   start Condor 3 server
@@ -39,6 +39,9 @@ Commands: /condor <command>
     list    list flight plans
     show    show informations about a flightplan
     ping    test if the discord bot is alive
+
+    help    show this help message
+```
 
 Upload: just send a new Flight Plan (ex: MyFlightPlan.fpl) to this channel.
 
@@ -130,7 +133,7 @@ async def on_message(message: Message):
 
 
 def main():
-    print("Starting Condor 3 Discord Bot")
+    print(f"Starting Condor 3 Discord Bot - v{release.version}")
     try:
         config = get_config()
         check_config(config)
