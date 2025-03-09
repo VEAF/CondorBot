@@ -8,7 +8,8 @@ SERVER_STATUS_ICONS = {
     OnlineStatus.OFFLINE: "❌",
     OnlineStatus.RUNNING: "💿",
     OnlineStatus.JOINING_ENABLED: "🕑",
-    OnlineStatus.JOINING_DISABLED: "✈️",
+    OnlineStatus.RACE_IN_PROGRESS: "✈️",
+    OnlineStatus.JOINING_DISABLED: "🛬",
 }
 
 
@@ -64,6 +65,11 @@ async def on_status(ctx) -> None:
             msg += f"**In game time**: {status.time}\n"
         if status.stop_join_in:
             msg += f"**Stop join in**: {status.stop_join_in}\n"
+
+        msg += f"\n{len(status.players)} connected player(s){':' if len(status.players) > 0 else ''}\n"
+        for player in status.players:
+            msg += f"\n- {player}"
+
         await ctx.channel.send(msg)
 
     except Exception as exc:
