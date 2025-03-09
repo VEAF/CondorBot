@@ -1,6 +1,6 @@
 discord:
   api_token: DISCORD_API_TOKEN
-  channel_id: 1234567890
+  admin_channel_id: 1234567890
 
 flight_plans_path: tests\files
 condor_path: C:\Condor3
