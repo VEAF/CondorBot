@@ -91,7 +91,7 @@ async def stop(ctx):
     try:
         status = refresh_server_status()
         if status.online_status == OnlineStatus.OFFLINE.value:
-            await ctx.send("❌ server is not running, so it couln't be stopped")
+            await ctx.send("❌ server is not running, so it couldn't be stopped")
             return
         if status.online_status == OnlineStatus.RUNNING.value or len(status.players) == 0:
             stop_server()
@@ -118,7 +118,7 @@ async def show(ctx):
 async def on_message(message: Message):
     config = get_config()
 
-    if message.author == bot.user or message.channel.id != config.discord.channel_id:
+    if message.author == bot.user or message.channel.id != config.discord.admin_channel_id:
         return
 
     print(f"[yellow]message {message.author}[/yellow]@[blue]{message.channel.name}[/blue]: {message.content}")
@@ -145,7 +145,7 @@ def main():
         print(f"[red]error loading configuration[/red]: {e}")
         return
 
-    print(f"[yellow]files channel[/yellow]: [blue]{config.discord.channel_id}[/blue]")
+    print(f"[yellow]admin channel[/yellow]: [blue]{config.discord.admin_channel_id}[/blue]")
     bot.run(config.discord.api_token)
 
 

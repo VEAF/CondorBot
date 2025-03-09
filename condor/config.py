@@ -10,7 +10,7 @@ logger = logging.getLogger("config")
 
 class DiscordConfig(BaseModel):
     api_token: str
-    channel_id: int
+    admin_channel_id: int
 
 
 class CondorServerConfig(BaseModel):
