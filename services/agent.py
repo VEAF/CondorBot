@@ -2,11 +2,11 @@ import os
 from discord import Message, Attachment
 from condor.config import get_config
 from condor.flight_plan import FlightPlan, list_flight_plans, load_flight_plan
-from condor.server_manager import refresh_server_status, OnlineStatus
+from condor.server_manager import get_server_status, OnlineStatus
 
 SERVER_STATUS_ICONS = {
     OnlineStatus.OFFLINE: "❌",
-    OnlineStatus.RUNNING: "💿",
+    OnlineStatus.NOT_RUNNING: "💿",
     OnlineStatus.JOINING_ENABLED: "🕑",
     OnlineStatus.RACE_IN_PROGRESS: "✈️",
     OnlineStatus.JOINING_DISABLED: "🛬",
@@ -58,7 +58,7 @@ async def on_list_flight_plans(ctx) -> None:
 
 async def on_status(ctx) -> None:
     try:
-        status = refresh_server_status()
+        status, _ = get_server_status()
 
         msg = SERVER_STATUS_ICONS.get(status.online_status, "⁉️") + " " + str(status.online_status.name) + "\n"
         if status.time:

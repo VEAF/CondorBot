@@ -5,9 +5,7 @@ from discord.ext import commands
 from condor import release
 from condor.server_manager import (
     OnlineStatus,
-    attach_server,
-    is_server_running,
-    refresh_server_status,
+    get_server_status,
     start_server,
     stop_server,
 )
@@ -62,7 +60,7 @@ async def ping(ctx):
 
 @condor.command(description="Start condor 3 server")
 async def start(ctx):
-    status = refresh_server_status()
+    status, _ = get_server_status()
     if status.online_status != OnlineStatus.OFFLINE.value:
         await ctx.send("❌ server is already running, server should be stopped first")
         return
@@ -92,11 +90,11 @@ async def status(ctx):
 @condor.command(description="Stop condor 3 server")
 async def stop(ctx):
     try:
-        status = refresh_server_status()
+        status, _ = get_server_status()
         if status.online_status == OnlineStatus.OFFLINE.value:
             await ctx.send("❌ server is not running, so it couldn't be stopped")
             return
-        if status.online_status == OnlineStatus.RUNNING.value or len(status.players) == 0:
+        if status.online_status == OnlineStatus.NOT_RUNNING.value or len(status.players) == 0:
             stop_server()
             await ctx.send("✅ server stopped")
         else:
@@ -137,12 +135,6 @@ def main():
     try:
         config = get_config()
         check_config(config)
-
-        if not (process := is_server_running()):
-            print("server is not already running")
-        else:
-            print(f"server is already [yellow]running[/yellow] pid={process}, connecting to the app")
-            attach_server()
 
     except Exception as e:
         print(f"[red]error loading configuration[/red]: {e}")
