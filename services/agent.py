@@ -1,5 +1,5 @@
 import os
-from discord import Message, Attachment
+from discord import Interaction, Message, Attachment
 from condor.config import get_config
 from condor.flight_plan import FlightPlan, list_flight_plans, load_flight_plan
 from condor.server_manager import get_server_status, OnlineStatus
@@ -47,16 +47,16 @@ async def on_files_upload(message: Message) -> None:
             await on_flight_plan_upload(message, attachment)
 
 
-async def on_list_flight_plans(ctx) -> None:
+async def on_list_flight_plans(interaction: Interaction) -> None:
     fpl = list_flight_plans()
     msg = f"{'✅' if len(fpl) > 0 else '❌'} {len(fpl)} flight plans available:\n\n"
     for fp in fpl:
         msg += f"- {fp.filename.split('\\')[-1]} *{fp.landscape} - {fp.distance / 1000:.0f} km*\n"
 
-    await ctx.channel.send(msg)
+    await interaction.response.send_message(msg, ephemeral=True)
 
 
-async def on_status(ctx) -> None:
+async def on_status(interaction: Interaction) -> None:
     try:
         status, _ = get_server_status()
 
@@ -70,7 +70,7 @@ async def on_status(ctx) -> None:
         for player in status.players:
             msg += f"\n- {player}"
 
-        await ctx.channel.send(msg)
+        await interaction.response.send_message(msg, ephemeral=True)
 
     except Exception as exc:
-        await ctx.channel.send(f"❌ error: {exc}")
+        await interaction.response.send_message(f"❌ error: {exc}", ephemeral=True)
