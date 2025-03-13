@@ -1,7 +1,7 @@
 import os
 from discord import Interaction, Message, Attachment
 from condor.config import get_config
-from condor.flight_plan import FlightPlan, list_flight_plans, load_flight_plan
+from condor.flight_plan import list_flight_plans, load_flight_plan
 from condor.server_manager import get_server_status, OnlineStatus
 
 SERVER_STATUS_ICONS = {
@@ -51,7 +51,7 @@ async def on_list_flight_plans(interaction: Interaction) -> None:
     fpl = list_flight_plans()
     msg = f"{'✅' if len(fpl) > 0 else '❌'} {len(fpl)} flight plans available:\n\n"
     for fp in fpl:
-        msg += f"- {fp.filename.split('\\')[-1]} *{fp.landscape} - {fp.distance / 1000:.0f} km*\n"
+        msg += f"- {os.path.basename(fp.filename)} *{fp.landscape} - {fp.distance / 1000:.0f} km*\n"
 
     await interaction.response.send_message(msg, ephemeral=True)
 

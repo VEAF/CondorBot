@@ -1,4 +1,5 @@
 import logging
+import sys
 from rich import print
 from discord import Interaction, Message, Intents
 from discord.ext import commands
@@ -11,7 +12,7 @@ from condor.server_manager import (
 )
 from condor.config import check_config, get_config
 from services.agent import on_files_upload, on_list_flight_plans, on_status
-from services.dialogs import SelectFlightPlanView
+from services.dialogs import SelectFlightPlanView, handle_error, send_response
 
 intents = Intents.default()
 intents.messages = True
@@ -44,7 +45,7 @@ Upload: just send a new Flight Plan (ex: MyFlightPlan.fpl) to this channel.
 
 """
 
-    await interaction.response.send_message(msg, ephemeral=True)
+    await send_response(interaction, msg)
 
 
 @bot.event
@@ -55,35 +56,35 @@ async def on_ready():
 
 @bot.tree.command(description="Simple Ping Pong Test command")
 async def ping(interaction: Interaction):
-    await interaction.response.send_message("Pong! 🏓", ephemeral=True)
+    await send_response(interaction, "Pong! 🏓")
 
 
 @bot.tree.command(description="Start condor 3 server")
 async def start(interaction: Interaction):
     status, _ = get_server_status()
     if status.online_status != OnlineStatus.OFFLINE.value:
-        await interaction.response.send_message(
-            "❌ server is already running, server should be stopped first", ephemeral=True
-        )
+        await handle_error(interaction, "server is already running, server should be stopped first")
         return
     try:
         view = SelectFlightPlanView(interaction.user)
-        await interaction.response.send_message("📋 Select a flight plan:", view=view, ephemeral=True)
+        await send_response(interaction, "📋 Select a flight plan:", view=view)
 
         await view.wait()
         if view.response:
             flight_plan = view.response
-            channel = interaction.channel
             start_server(flight_plan)
-            await channel.send(
-                f"✅ server started with flight plan {flight_plan} by **{interaction.user.display_name}**"
+            await send_response(
+                interaction,
+                f"✅ server started with flight plan {flight_plan} by **{interaction.user.display_name}**",
+                channel_message=True,
             )
+            await interaction.delete_original_response()
         else:
-            await interaction.response.send_message("⏳ elapsed time, operation cancelled.", ephemeral=True)
+            await send_response(interaction, "⏳ elapsed time, operation cancelled.")
 
     except Exception as exc:
-        await interaction.response.send_message(f"❌ an error occured, server not started: {exc}", ephemeral=True)
-        return
+        print(f"[red]{exc}[/red]")
+        await handle_error(f"an error occured, server not started: {exc}")
 
 
 @bot.tree.command(name="status", description="Refresh condor 3 server status")
@@ -96,24 +97,21 @@ async def stop(interaction: Interaction):
     try:
         status, _ = get_server_status()
         if status.online_status == OnlineStatus.OFFLINE.value:
-            await interaction.response.send_message(
-                "❌ server is not running, so it couldn't be stopped", ephemeral=True
-            )
+            await handle_error(interaction, "server is not running, so it couldn't be stopped")
             return
         if status.online_status == OnlineStatus.NOT_RUNNING.value or len(status.players) == 0:
-            channel = interaction.channel
+            await send_response(interaction, "stopping", delete_after=1)
             stop_server()
-            await interaction.response.send_message("done", delete_after=1)
-            await channel.send(f"🔴 server stopped by **{interaction.user.display_name}**")
-        else:
-            await interaction.response.send_message(
-                f"❌ server couldn't be stopped, {len(status.players)} player(s) are connected", ephemeral=True
+            await send_response(
+                interaction, f"🔴 server stopped by **{interaction.user.display_name}**", channel_message=True
             )
-            return
+        else:
+            await handle_error(
+                interaction, f"server couldn't be stopped, {len(status.players)} player(s) are connected"
+            )
     except Exception as exc:
         print(f"[red]{exc}[/red]")
-        await interaction.response.send_message(f"❌ an error occured, server not stopped: {exc}", ephemeral=True)
-        return
+        await handle_error(interaction, f"an error occured, server not stopped: {exc}")
 
 
 @bot.tree.command(name="list", description="List flight plans available")
@@ -122,8 +120,8 @@ async def _list(interaction: Interaction):
 
 
 @bot.tree.command(description="Show informations about a flightplan")
-async def show(interaction: Interaction):
-    await interaction.response.send_message("👨‍💻 developpment in progress", ephemeral=True)
+async def show(interaction: Interaction, flightplan_name: str):
+    await send_response(interaction, "👨‍💻 developpment in progress")
 
 
 @bot.event
