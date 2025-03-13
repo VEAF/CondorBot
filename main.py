@@ -1,6 +1,7 @@
 import logging
+import sys
 from rich import print
-from discord import Message, Intents
+from discord import Interaction, Message, Intents
 from discord.ext import commands
 from condor import release
 from condor.server_manager import (
@@ -11,7 +12,7 @@ from condor.server_manager import (
 )
 from condor.config import check_config, get_config
 from services.agent import on_files_upload, on_list_flight_plans, on_status
-from services.dialogs import SelectFlightPlanView
+from services.dialogs import SelectFlightPlanView, handle_error, send_response
 
 intents = Intents.default()
 intents.messages = True
@@ -23,10 +24,9 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 logger = logging.getLogger("main")
 
 
-@bot.group()
-async def condor(ctx):
-    if ctx.invoked_subcommand is None:
-        msg = f"""
+@bot.tree.command(description="Display the help")
+async def condor(interaction: Interaction):
+    msg = f"""
 **Condor 3 bot help** - *v{release.version}*
 
 ```        
@@ -45,74 +45,83 @@ Upload: just send a new Flight Plan (ex: MyFlightPlan.fpl) to this channel.
 
 """
 
-        await ctx.send(msg)
+    await send_response(interaction, msg)
 
 
 @bot.event
 async def on_ready():
+    await bot.tree.sync()
     print(f"✅ bot is logged in as {bot.user}")
 
 
-@condor.command(description="Simple Ping Pong Test command")
-async def ping(ctx):
-    await ctx.send("Pong! 🏓")
+@bot.tree.command(description="Simple Ping Pong Test command")
+async def ping(interaction: Interaction):
+    await send_response(interaction, "Pong! 🏓")
 
 
-@condor.command(description="Start condor 3 server")
-async def start(ctx):
+@bot.tree.command(description="Start condor 3 server")
+async def start(interaction: Interaction):
     status, _ = get_server_status()
     if status.online_status != OnlineStatus.OFFLINE.value:
-        await ctx.send("❌ server is already running, server should be stopped first")
+        await handle_error(interaction, "server is already running, server should be stopped first")
         return
     try:
-        view = SelectFlightPlanView(ctx.author)
-        await ctx.send("📋 Select a flight plan:", view=view)
+        view = SelectFlightPlanView(interaction.user)
+        await send_response(interaction, "📋 Select a flight plan:", view=view)
 
-        await view.wait()  # wait for user answer
+        await view.wait()
         if view.response:
             flight_plan = view.response
-            await ctx.send(f"📋 Selected flight plan: **{flight_plan}**\n*starting server*")
             start_server(flight_plan)
-            await ctx.send(f"✅ server started with flight plan {flight_plan}")
+            await send_response(
+                interaction,
+                f"✅ server started with flight plan {flight_plan} by **{interaction.user.display_name}**",
+                channel_message=True,
+            )
+            await interaction.delete_original_response()
         else:
-            await ctx.send("⏳ elapsed time, operation cancelled.")
+            await send_response(interaction, "⏳ elapsed time, operation cancelled.")
 
     except Exception as exc:
-        await ctx.send(f"❌ an error occured, server not started: {exc}")
-        return
+        print(f"[red]{exc}[/red]")
+        await handle_error(interaction, f"an error occured, server not started: {exc}")
 
 
-@condor.command(description="Refresh condor 3 server status")
-async def status(ctx):
-    await on_status(ctx)
+@bot.tree.command(name="status", description="Refresh condor 3 server status")
+async def status(interaction: Interaction):
+    await on_status(interaction)
 
 
-@condor.command(description="Stop condor 3 server")
-async def stop(ctx):
+@bot.tree.command(description="Stop condor 3 server")
+async def stop(interaction: Interaction):
     try:
         status, _ = get_server_status()
         if status.online_status == OnlineStatus.OFFLINE.value:
-            await ctx.send("❌ server is not running, so it couldn't be stopped")
+            await handle_error(interaction, "server is not running, so it couldn't be stopped")
             return
         if status.online_status == OnlineStatus.NOT_RUNNING.value or len(status.players) == 0:
+            await send_response(interaction, "stopping", delete_after=1)
             stop_server()
-            await ctx.send("✅ server stopped")
+            await send_response(
+                interaction, f"🔴 server stopped by **{interaction.user.display_name}**", channel_message=True
+            )
         else:
-            await ctx.send(f"❌ server couldn't be stopped, {len(status.players)} player(s) are connected")
-            return
+            await handle_error(
+                interaction, f"server couldn't be stopped, {len(status.players)} player(s) are connected"
+            )
     except Exception as exc:
-        await ctx.send(f"❌ an error occured, server not stopped: {exc}")
-        return
+        print(f"[red]{exc}[/red]")
+        await handle_error(interaction, f"an error occured, server not stopped: {exc}")
 
 
-@condor.command(name="list", description="List flight plans available")
-async def _list(ctx):
-    await on_list_flight_plans(ctx)
+@bot.tree.command(name="list", description="List flight plans available")
+async def _list(interaction: Interaction):
+    await on_list_flight_plans(interaction)
 
 
-@condor.command(description="Show informations about a flightplan")
-async def show(ctx):
-    await ctx.send("👨‍💻 developpment in progress")
+@bot.tree.command(description="Show informations about a flightplan")
+async def show(interaction: Interaction, flightplan_name: str):
+    await send_response(interaction, "👨‍💻 developpment in progress")
 
 
 @bot.event
