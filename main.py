@@ -84,7 +84,7 @@ async def start(interaction: Interaction):
 
     except Exception as exc:
         print(f"[red]{exc}[/red]")
-        await handle_error(f"an error occured, server not started: {exc}")
+        await handle_error(interaction, f"an error occured, server not started: {exc}")
 
 
 @bot.tree.command(name="status", description="Refresh condor 3 server status")
