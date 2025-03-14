@@ -1,7 +1,7 @@
 import os
 import configparser
 from math import sqrt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rich import print
 from condor.config import get_config
 
@@ -27,7 +27,7 @@ class FlightPlan(BaseModel):
     version: str
     landscape: str
     description: str
-    turnpoints: list[TurnPoint]
+    turnpoints: list[TurnPoint] = Field(default=[])
 
     @property
     def distance(self) -> float:
@@ -110,3 +110,13 @@ def list_flight_plans() -> list[FlightPlan]:
 
     fpl.sort(key=lambda x: x.filename.lower())
     return fpl
+
+
+def flight_plan_to_markdown(flight_plan: FlightPlan) -> str:
+    msg = f"**Flight Plan**: {flight_plan.filename}\n"
+    msg += f"**Length**: {flight_plan.distance / 1000:.0f} km\n"
+    msg += f"**Turn points**: {len(flight_plan.turnpoints)}\n"
+    for tp in flight_plan.turnpoints:
+        msg += f"- {tp.name}\n"
+
+    return msg

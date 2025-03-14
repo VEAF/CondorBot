@@ -3,6 +3,7 @@ from unittest.mock import patch
 from condor.flight_plan import (
     TurnPoint,
     FlightPlan,
+    flight_plan_to_markdown,
     list_flight_plans,
     load_flight_plan,
     get_flight_plan_path,
@@ -68,3 +69,24 @@ def test_list_flight_plans(mock_config):
     assert fp.filename == "test.fpl"
     assert fp.human_filename == "test"
     assert fp.landscape == "Slovenia3"
+
+
+def test_flight_plan_to_markdown() -> None:
+    flight_plan = FlightPlan(filepath="test.fpl", version="30000", landscape="AA3", description="Mon plan de vol")
+    for i in range(3):
+        flight_plan.turnpoints.append(
+            TurnPoint(name=f"TP{i:01}", pos_x=i * 10000, pos_y=i * 1000, pos_z=0, airport_id=0, radius=1, altitude=1000)
+        )
+    # Act
+    markdown = flight_plan_to_markdown(flight_plan)
+    print(markdown)
+
+    # Assert
+    wanted_markdown = """**Flight Plan**: test.fpl
+**Length**: 10 km
+**Turn points**: 3
+- TP0
+- TP1
+- TP2
+"""
+    assert markdown == wanted_markdown
