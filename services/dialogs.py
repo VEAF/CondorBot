@@ -61,7 +61,8 @@ class SelectFlightPlanViewAbstract(ui.View):
 class SelectStartFlightPlan(SelectFlightPlanViewAbstract):
     async def select_callback(self, interaction: Interaction):
         if interaction.user != self.user:
-            return send_response(interaction, "You are not granted to answer !")
+            await send_response(interaction, "You are not granted to answer !")
+            return
         self.response = self.select_menu.values[0]
         await send_response(interaction, "done", delete_after=1)
         self.stop()
@@ -70,7 +71,8 @@ class SelectStartFlightPlan(SelectFlightPlanViewAbstract):
 class SelectViewFlightPlan(SelectFlightPlanViewAbstract):
     async def select_callback(self, interaction: Interaction):
         if interaction.user != self.user:
-            return send_response(interaction, "You are not granted to answer !")
+            await send_response(interaction, "You are not granted to answer !")
+            return
         self.response = self.select_menu.values[0]
 
         flight_plan = load_flight_plan(get_flight_plan_path(self.response))

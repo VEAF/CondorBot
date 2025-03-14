@@ -27,7 +27,7 @@ class FlightPlan(BaseModel):
     version: str
     landscape: str
     description: str
-    turnpoints: list[TurnPoint] = Field(default=[])
+    turnpoints: list[TurnPoint] = Field(default_factory=list)
 
     @property
     def distance(self) -> float:
@@ -53,18 +53,7 @@ def load_flight_plan(filepath: str) -> FlightPlan:
     parser = configparser.ConfigParser()
     parser.read(filepath, encoding="utf-8")
 
-    flightplan = {}
-    flightplan["filepath"] = filepath.split("/")[-1]
-    flightplan["version"] = parser.get("Version", "Condor version", fallback=None)
-    flightplan["landscape"] = parser.get("Task", "Landscape", fallback=None)
-    flightplan["description"] = parser.get("Description", "Text", fallback=None)
-    flightplan["turnpoints"] = []
-
-    flightplan["plane_class"] = {
-        "class": parser.get("Plane", "Class", fallback=None),
-        "name": parser.get("Plane", "Name", fallback=None),
-        "water": int(parser.get("Plane", "Water", fallback=0)),
-    }
+    turnpoints: list[TurnPoint] = []
 
     nb_turnpoints = parser.getint("Task", "Count", fallback=0)
     for i in range(nb_turnpoints):
@@ -77,7 +66,20 @@ def load_flight_plan(filepath: str) -> FlightPlan:
             "radius": int(parser.get("Task", f"TPRadius{i}", fallback=0)),
             "altitude": int(parser.get("Task", f"TPAltitude{i}", fallback=0)),
         }
-        flightplan["turnpoints"].append(tp)
+        turnpoints.append(tp)
+
+    flightplan = {
+        "filepath": filepath.split("/")[-1],
+        "version": parser.get("Version", "Condor version", fallback=None),
+        "landscape": parser.get("Task", "Landscape", fallback=None),
+        "description": parser.get("Description", "Text", fallback=None),
+        "turnpoints": turnpoints,
+        "plane_class": {
+            "class": parser.get("Plane", "Class", fallback=None),
+            "name": parser.get("Plane", "Name", fallback=None),
+            "water": int(parser.get("Plane", "Water", fallback=0)),
+        },
+    }
 
     return FlightPlan.model_validate(flightplan)
 
@@ -106,7 +108,7 @@ def list_flight_plans() -> list[FlightPlan]:
             try:
                 fpl.append(load_flight_plan(get_config().flight_plans_path + "\\" + filename))
             except Exception:
-                pass  # just ignore bad flight plan loading
+                print(f"[yellow] flight plan [blue]{filename}[/blue] couldn't be loaded[/yellow]")
 
     fpl.sort(key=lambda x: x.filename.lower())
     return fpl
