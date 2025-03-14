@@ -1,7 +1,7 @@
 import os
 from discord import Interaction, Message, Attachment
 from condor.config import get_config
-from condor.flight_plan import list_flight_plans, load_flight_plan
+from condor.flight_plan import FlightPlan, flight_plan_to_markdown, list_flight_plans, load_flight_plan
 from condor.server_manager import get_server_status, OnlineStatus
 
 SERVER_STATUS_ICONS = {
@@ -25,11 +25,7 @@ async def on_flight_plan_upload(message: Message, attachment: Attachment) -> Non
         flight_plan = load_flight_plan(local_filepath)
 
         msg = f"✅ {message.author} has uploaded a new flight plan:\n\n"
-        msg += f"**Flight Plan**: {flight_plan.filename}\n"
-        msg += f"**Length**: {flight_plan.distance / 1000:.0f} km\n"
-        msg += f"**Turn points**: {len(flight_plan.turnpoints)}\n"
-        for tp in flight_plan.turnpoints:
-            msg += f"- {tp.name}\n"
+        msg += flight_plan_to_markdown(flight_plan)
 
         print(f"✅ flight plan [blue]{file_name}[/blue] [green]saved[/green]")
         await message.channel.send(msg)

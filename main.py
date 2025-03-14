@@ -1,7 +1,6 @@
 import logging
-import sys
 from rich import print
-from discord import Interaction, Message, Intents
+from discord import Interaction, InteractionResponded, Message, Intents
 from discord.ext import commands
 from condor import release
 from condor.server_manager import (
@@ -12,7 +11,12 @@ from condor.server_manager import (
 )
 from condor.config import check_config, get_config
 from services.agent import on_files_upload, on_list_flight_plans, on_status
-from services.dialogs import SelectFlightPlanView, handle_error, send_response
+from services.dialogs import (
+    SelectStartFlightPlan,
+    SelectViewFlightPlan,
+    handle_error,
+    send_response,
+)
 
 intents = Intents.default()
 intents.messages = True
@@ -66,7 +70,7 @@ async def start(interaction: Interaction):
         await handle_error(interaction, "server is already running, server should be stopped first")
         return
     try:
-        view = SelectFlightPlanView(interaction.user)
+        view = SelectStartFlightPlan(interaction.user)
         await send_response(interaction, "📋 Select a flight plan:", view=view)
 
         await view.wait()
@@ -81,6 +85,9 @@ async def start(interaction: Interaction):
             await interaction.delete_original_response()
         else:
             await send_response(interaction, "⏳ elapsed time, operation cancelled.")
+
+    except InteractionResponded as already_responded:
+        print(f"[red]{already_responded}[/red]")
 
     except Exception as exc:
         print(f"[red]{exc}[/red]")
@@ -109,6 +116,10 @@ async def stop(interaction: Interaction):
             await handle_error(
                 interaction, f"server couldn't be stopped, {len(status.players)} player(s) are connected"
             )
+
+    except InteractionResponded as already_responded:
+        print(f"[red]{already_responded}[/red]")
+
     except Exception as exc:
         print(f"[red]{exc}[/red]")
         await handle_error(interaction, f"an error occured, server not stopped: {exc}")
@@ -120,8 +131,20 @@ async def _list(interaction: Interaction):
 
 
 @bot.tree.command(description="Show informations about a flightplan")
-async def show(interaction: Interaction, flightplan_name: str):
-    await send_response(interaction, "👨‍💻 developpment in progress")
+async def show(interaction: Interaction):
+    try:
+        view = SelectViewFlightPlan(interaction.user)
+        await send_response(interaction, "📋 Select a flight plan:", view=view)
+        await view.wait()
+        if not view.response:
+            await send_response(interaction, "⏳ elapsed time, operation cancelled.")
+
+    except InteractionResponded as already_responded:
+        print(f"[red]{already_responded}[/red]")
+
+    except Exception as exc:
+        print(f"[red]{exc}[/red]")
+        await handle_error(interaction, f"an error occured, server not started: {exc}")
 
 
 @bot.event
