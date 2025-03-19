@@ -27,24 +27,24 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 
 logger = logging.getLogger("main")
 
+prefix = get_config().command_prefix
 
-@bot.tree.command(description="Display the help")
+
+@bot.tree.command(name=f"{prefix}help", description="Display the help")
 async def condor(interaction: Interaction):
+    # cmd_prefix
     msg = f"""
 **Condor 3 bot help** - *v{release.version}*
 
 ```        
-Commands: /condor <command>
-        
-    start   start Condor 3 server
-    stop    stop Condor 3 server
-    list    list flight plans
-    show    show informations about a flightplan
-    ping    test if the discord bot is alive
+Commands:
 
-    help    show this help message
+"""
+    for command in bot.tree.get_commands():
+        msg += f"{command.name:10s} {command.description}\n"
+
+    msg += """
 ```
-
 Upload: just send a new Flight Plan (ex: MyFlightPlan.fpl) to this channel.
 
 """
@@ -58,12 +58,12 @@ async def on_ready():
     print(f"✅ bot is logged in as {bot.user}")
 
 
-@bot.tree.command(description="Simple Ping Pong Test command")
+@bot.tree.command(name=f"{prefix}ping", description="Simple Ping Pong Test command")
 async def ping(interaction: Interaction):
     await send_response(interaction, "Pong! 🏓")
 
 
-@bot.tree.command(description="Start condor 3 server")
+@bot.tree.command(name=f"{prefix}start", description="Start condor 3 server")
 async def start(interaction: Interaction):
     status, _ = get_server_status()
     if status.online_status != OnlineStatus.OFFLINE.value:
@@ -94,12 +94,12 @@ async def start(interaction: Interaction):
         await handle_error(interaction, f"an error occured, server not started: {exc}")
 
 
-@bot.tree.command(name="status", description="Refresh condor 3 server status")
+@bot.tree.command(name=f"{prefix}status", description="Refresh condor 3 server status")
 async def status(interaction: Interaction):
     await on_status(interaction)
 
 
-@bot.tree.command(description="Stop condor 3 server")
+@bot.tree.command(name=f"{prefix}stop", description="Stop condor 3 server")
 async def stop(interaction: Interaction):
     try:
         status, _ = get_server_status()
@@ -125,12 +125,12 @@ async def stop(interaction: Interaction):
         await handle_error(interaction, f"an error occured, server not stopped: {exc}")
 
 
-@bot.tree.command(name="list", description="List flight plans available")
+@bot.tree.command(name=f"{prefix}list", description="List flight plans available")
 async def _list(interaction: Interaction):
     await on_list_flight_plans(interaction)
 
 
-@bot.tree.command(description="Show informations about a flightplan")
+@bot.tree.command(name=f"{prefix}show", description="Show informations about a flightplan")
 async def show(interaction: Interaction):
     try:
         view = SelectViewFlightPlan(interaction.user)
@@ -173,6 +173,11 @@ def main():
         return
 
     print(f"[yellow]admin channel[/yellow]: [blue]{config.discord.admin_channel_id}[/blue]")
+    print(f"[yellow]command prefix[/yellow]: [blue]{config.command_prefix}[/blue]")
+    print("[yellow]registered commands[/yellow]:")
+    for command in bot.tree.get_commands():
+        print(f"  - [blue]{command.name}[/blue]  {command.description}")
+
     bot.run(config.discord.api_token)
 
 

@@ -5,6 +5,8 @@ discord:
 flight_plans_path: C:\Condor3\BotFlightPlans
 condor_path: C:\Condor3
 
+# command_prefix: condor-
+
 condor_server:
   server_name: "VEAF TEST"
   # port: 56278
