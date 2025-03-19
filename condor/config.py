@@ -31,6 +31,7 @@ class CondorServerConfig(BaseModel):
 
 class Config(BaseModel):
     discord: DiscordConfig
+    command_prefix: str = "condor-"
 
     condor_server: CondorServerConfig
     flight_plans_path: str

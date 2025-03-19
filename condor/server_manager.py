@@ -100,11 +100,7 @@ def parse_server_status_list_box_items(status: ServerStatus, list_box_items) -> 
 
 
 def parse_players_list_box_items(status: ServerStatus, list_box_items) -> None:
-    players = []
-    for item in list_box_items:
-        players.append(item)
-
-    status.players = players
+    status.players = list(list_box_items)
 
 
 def get_server_status() -> tuple[ServerStatus, ServerProcess | None]:
