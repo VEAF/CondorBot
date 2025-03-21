@@ -1,0 +1,2 @@
+- ADDED flight plan preview in condor-show command
+- ADDED debug CLI flight plan preview command
