@@ -50,6 +50,9 @@ class FlightPlan(BaseModel):
 
 
 def load_flight_plan(filepath: str) -> FlightPlan:
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(filepath)
+
     parser = configparser.ConfigParser()
     parser.read(filepath, encoding="utf-8")
 
@@ -122,3 +125,7 @@ def flight_plan_to_markdown(flight_plan: FlightPlan) -> str:
         msg += f"- {tp.name}\n"
 
     return msg
+
+
+def get_landscape_image_filepath(landscape_name: str) -> str:
+    return f"{get_config().condor_path}\\Landscapes\\{landscape_name}\\{landscape_name}.bmp"

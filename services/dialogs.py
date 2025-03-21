@@ -1,7 +1,9 @@
 from abc import abstractmethod
-from discord import ui, Member, SelectOption, Interaction
+from io import BytesIO
+from discord import ui, Member, SelectOption, Interaction, File
 from discord.integrations import MISSING
 from condor.flight_plan import flight_plan_to_markdown, get_flight_plan_path, list_flight_plans, load_flight_plan
+from services.flight_plan_service import get_image_of_flight_plan
 
 
 async def send_response(
@@ -77,9 +79,21 @@ class SelectViewFlightPlan(SelectFlightPlanViewAbstract):
 
         flight_plan = load_flight_plan(get_flight_plan_path(self.response))
 
+        msg = flight_plan_to_markdown(flight_plan)
+        file = MISSING
+
+        try:
+            image = get_image_of_flight_plan(flight_plan)
+            image_bytes = BytesIO()
+            image.save(image_bytes, format="PNG")
+            image_bytes.seek(0)
+            file = File(fp=image_bytes, filename="flight_plan.png")
+        except Exception as exc:
+            msg += f"*flight plan preview failed*: {exc}"
+
         # remove original message
         await interaction.response.defer()
         await interaction.delete_original_response()
 
-        await interaction.followup.send(flight_plan_to_markdown(flight_plan), ephemeral=True)
+        await interaction.followup.send(msg, file=file, ephemeral=True)
         self.stop()
