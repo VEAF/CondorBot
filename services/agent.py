@@ -56,7 +56,7 @@ async def on_status(interaction: Interaction) -> None:
     try:
         status, _ = get_server_status()
 
-        msg = SERVER_STATUS_ICONS.get(status.online_status, "⁉️") + " " + str(status.online_status.name) + "\n"
+        msg = f"{SERVER_STATUS_ICONS.get(status.online_status, '⁉️')} {status.online_status.name} - version {status.version}\n"
         if status.time:
             msg += f"**In game time**: {status.time}\n"
         if status.stop_join_in:
