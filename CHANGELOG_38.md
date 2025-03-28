@@ -1,0 +1,1 @@
+- ADDED display server version in /condor-status command

@@ -8,6 +8,7 @@ from pywinauto import Application
 from pywinauto.application import WindowSpecification, ProcessNotFoundError
 
 CONDOR_DEDICATED_EXE = "CondorDedicated.exe"
+CONDOR_DEDICATED_WINDOW_TITLE_PREFIX = "Condor dedicated server version"
 
 
 class OnlineStatus(IntEnum):
@@ -19,6 +20,7 @@ class OnlineStatus(IntEnum):
 
 
 class ServerStatus(BaseModel):
+    version: str = "unknown"
     online_status: OnlineStatus = OnlineStatus.OFFLINE
     time: str | None = None
     stop_join_in: str | None = None
@@ -110,6 +112,10 @@ def get_server_status() -> tuple[ServerStatus, ServerProcess | None]:
         return ServerStatus(online_status=OnlineStatus.OFFLINE), None
 
     status = ServerStatus(online_status=OnlineStatus.NOT_RUNNING)
+
+    window_title: str = process.window.window_text()
+    if window_title.startswith(CONDOR_DEDICATED_WINDOW_TITLE_PREFIX):
+        status.version = window_title[len(CONDOR_DEDICATED_WINDOW_TITLE_PREFIX) + 1 :].strip()
 
     # a better way than searching all listbox, and matching the top position ?
     list_boxes = process.window.descendants(class_name="TspListBox")

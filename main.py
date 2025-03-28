@@ -94,7 +94,7 @@ async def start(interaction: Interaction):
         await handle_error(interaction, f"an error occured, server not started: {exc}")
 
 
-@bot.tree.command(name=f"{prefix}status", description="Refresh condor 3 server status")
+@bot.tree.command(name=f"{prefix}status", description="Display condor 3 server status")
 async def status(interaction: Interaction):
     await on_status(interaction)
 
