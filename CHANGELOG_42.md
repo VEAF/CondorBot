@@ -1,0 +1,1 @@
+- FIXED flight plan distance calculation is wrong

@@ -33,7 +33,7 @@ class FlightPlan(BaseModel):
     def distance(self) -> float:
         total_dist = 0
 
-        for i in range(1, len(self.turnpoints) - 1):
+        for i in range(1, len(self.turnpoints)):
             point_from = self.turnpoints[i - 1]
             point_to = self.turnpoints[i]
             total_dist += sqrt((point_to.pos_x - point_from.pos_x) ** 2 + (point_to.pos_y - point_from.pos_y) ** 2)
