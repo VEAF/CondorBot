@@ -35,7 +35,7 @@ def test_flightplan_distance():
         description="A test flight plan",
         turnpoints=turnpoints,
     )
-    assert pytest.approx(fp.distance, 0.01) == 5.0
+    assert 10.0 == pytest.approx(fp.distance, 0.01)
 
 
 def test_load_flight_plan():
@@ -46,6 +46,7 @@ def test_load_flight_plan():
     assert fp.landscape == "Slovenia3"
     assert fp.description == "100 km of evening ridge riding"
     assert len(fp.turnpoints) == 6
+    assert pytest.approx(fp.distance, 0.01) == 107855
 
     tp = fp.turnpoints[0]
     assert isinstance(tp, TurnPoint)
@@ -83,7 +84,7 @@ def test_flight_plan_to_markdown() -> None:
 
     # Assert
     wanted_markdown = """**Flight Plan**: test.fpl
-**Length**: 10 km
+**Length**: 20 km
 **Turn points**: 3
 - TP0
 - TP1
